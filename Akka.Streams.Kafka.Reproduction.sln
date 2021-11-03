@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Kafka.Reproduc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Kafka.Reproduction.Producer", "src\Akka.Streams.Kafka.Reproduction.Producer\Akka.Streams.Kafka.Reproduction.Producer.csproj", "{320768E6-A458-4894-B162-0F725CB28590}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Kafka.Reproduction.SubstreamConsumer", "src\Akka.Streams.Kafka.Reproduction.SubstreamConsumer\Akka.Streams.Kafka.Reproduction.SubstreamConsumer.csproj", "{67D65D32-F038-4EFA-91EF-04A44BCEC763}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,5 +46,17 @@ Global
 		{320768E6-A458-4894-B162-0F725CB28590}.Release|x64.Build.0 = Release|Any CPU
 		{320768E6-A458-4894-B162-0F725CB28590}.Release|x86.ActiveCfg = Release|Any CPU
 		{320768E6-A458-4894-B162-0F725CB28590}.Release|x86.Build.0 = Release|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Debug|x64.Build.0 = Debug|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Debug|x86.Build.0 = Debug|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Release|x64.ActiveCfg = Release|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Release|x64.Build.0 = Release|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Release|x86.ActiveCfg = Release|Any CPU
+		{67D65D32-F038-4EFA-91EF-04A44BCEC763}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
