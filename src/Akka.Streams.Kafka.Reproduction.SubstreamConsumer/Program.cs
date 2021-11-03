@@ -49,7 +49,7 @@ namespace Akka.Streams.Kafka.Reproduction.SubstreamConsumer
             var committerSettings = CommitterSettings.Create(actorSystem);
 
             var mappingFlow = (Flow<CommittableMessage<Null, string>, (string Topic, string Value, ICommittableOffset CommitableOffset), NotUsed>)Flow.Create<CommittableMessage<Null, string>>()
-                .GroupBy(3, message => message.Record.Partition.Value)
+                .GroupBy(10, message => message.Record.Partition.Value)
                 .Select(c => (c.Record.Topic, c.Record.Message.Value, c.CommitableOffset))
                 .SelectAsync(1, async t =>
                 {
