@@ -3,9 +3,11 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
+    <RootNamespace>Akka.Streams.Kafka.Reproduction</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aaron.Akka.Streams.BackpressureMonitor" Version="0.1.1" />
     <PackageReference Include="Akka.Streams.Kafka" Version="$(AkkaStreamsKafkaVersion)" />
   </ItemGroup>
 
