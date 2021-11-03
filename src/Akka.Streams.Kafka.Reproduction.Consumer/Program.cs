@@ -63,8 +63,13 @@ namespace Akka.Streams.Kafka.Reproduction
                 .BackpressureAlert(LogLevel.WarningLevel, TimeSpan.FromMilliseconds(500))
                 .Via(KafkaProducer.FlexiFlow<Null, string, ICommittableOffset>(producerSettings)).WithAttributes(Attributes.CreateName("FlexiFlow"))
                 .Select(m => (ICommittable)m.PassThrough)
-                .Log("OutputLog").AddAttributes(Attributes.CreateLogLevels(LogLevel.InfoLevel))
-                .ToMaterialized(Committer.Sink(committerSettings), DrainingControl<NotUsed>.Create)
+                .AlsoToMaterialized(Committer.Sink(committerSettings), DrainingControl<NotUsed>.Create)
+                .To(Flow.Create<ICommittable>()
+                    .Async()
+                    .GroupedWithin(1000, TimeSpan.FromSeconds(1))
+                    .Select(c => c.Count())
+                    .Log("MsgCount").AddAttributes(Attributes.CreateLogLevels(LogLevel.InfoLevel))
+                    .To(Sink.Ignore<int>()))
                 .Run(materializer);
 
             Console.ReadLine();
