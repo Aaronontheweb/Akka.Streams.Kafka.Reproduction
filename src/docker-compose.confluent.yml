@@ -1,0 +1,22 @@
+version: '2'
+
+services:
+  producer:
+    build:
+      context: ./src/Akka.Streams.Kafka.Reproduction.Producer
+      dockerfile: ./src/Akka.Streams.Kafka.Reproduction.Producer/Dockerfile
+    environment:
+      KAFKA_HOST: ""
+      KAFKA_PORT: ""
+      KAFKA_SASL_USERNAME: ""
+      KAFKA_SASL_PASSWORD: ""
+
+  consumer:
+    build:
+      context: ./src/Akka.Streams.Kafka.Reproduction.SubstreamConsumer
+      dockerfile: ./src/Akka.Streams.Kafka.Reproduction.SubstreamConsumer/Dockerfile
+    environment:
+      KAFKA_HOST: ""
+      KAFKA_PORT: ""
+      KAFKA_SASL_USERNAME: ""
+      KAFKA_SASL_PASSWORD: ""

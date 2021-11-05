@@ -22,6 +22,9 @@ namespace Akka.Streams.Kafka.Reproduction.SubstreamConsumer
             var actorSystem = ActorSystem.Create("KafkaSpec", configSetup);
             var materializer = actorSystem.Materializer();
 
+            var kafkaHost = Environment.GetEnvironmentVariable("KAFKA_HOST") ?? "localhost";
+            var kafkaPort = int.Parse(Environment.GetEnvironmentVariable("KAFKA_PORT") ?? "29092");
+
             var consumerConfig = new ConsumerConfig
             {
                 EnableAutoCommit = true,
@@ -30,18 +33,18 @@ namespace Akka.Streams.Kafka.Reproduction.SubstreamConsumer
                 AutoOffsetReset = AutoOffsetReset.Latest,
                 ClientId = "unique.client",
                 SocketKeepaliveEnable = true,
-                ConnectionsMaxIdleMs = 180000
+                ConnectionsMaxIdleMs = 180000,
             };
 
             var consumerSettings = ConsumerSettings<Null, string>
                 .Create(actorSystem, null, null)
-                .WithBootstrapServers("localhost:29092")
+                .WithBootstrapServers($"{kafkaHost}:{kafkaPort}")
                 .WithStopTimeout(TimeSpan.Zero)
                 .WithGroupId("group1");
             
             var producerSettings = ProducerSettings<Null, string>.Create(actorSystem,
                     null, null)
-                .WithBootstrapServers("localhost:29092");
+                .WithBootstrapServers($"{kafkaHost}:{kafkaPort}");
             
             // TODO: we should just be able to accept a `ConsumerConfig` property
             consumerConfig.ForEach(kv => consumerSettings = consumerSettings.WithProperty(kv.Key, kv.Value));

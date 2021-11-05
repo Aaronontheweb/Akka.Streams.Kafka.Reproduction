@@ -19,10 +19,13 @@ namespace Akka.Streams.Kafka.Reproduction.Producer
             var configSetup = BootstrapSetup.Create().WithConfig(KafkaExtensions.DefaultSettings);
             var actorSystem = ActorSystem.Create("KafkaSpec", configSetup);
             var materializer = actorSystem.Materializer();
+            
+            var kafkaHost = Environment.GetEnvironmentVariable("KAFKA_HOST") ?? "localhost";
+            var kafkaPort = int.Parse(Environment.GetEnvironmentVariable("KAFKA_PORT") ?? "29092");
 
             var producerSettings = ProducerSettings<Null, string>.Create(actorSystem,
                     null, null)
-                .WithBootstrapServers("localhost:29092");
+                .WithBootstrapServers($"{kafkaHost}:{kafkaPort}");
             
             BeginProduce(producerSettings, materializer);
 
