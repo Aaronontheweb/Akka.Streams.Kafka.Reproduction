@@ -38,6 +38,7 @@ namespace Akka.Streams.Kafka.Reproduction.Producer
                 producerConfig.SaslMechanism = SaslMechanism.Plain;
                 producerConfig.SaslUsername = kafkaUserSasl;
                 producerConfig.SaslPassword = kafkaUserPassword;
+                producerConfig.SecurityProtocol = SecurityProtocol.SaslSsl;
             }
 
             var producerSettings = ProducerSettings<Null, string>.Create(actorSystem,
