@@ -22,30 +22,57 @@ namespace Akka.Streams.Kafka.Reproduction
             var actorSystem = ActorSystem.Create("KafkaSpec", configSetup);
             var materializer = actorSystem.Materializer();
 
+           var kafkaHost = Environment.GetEnvironmentVariable("KAFKA_HOST") ?? "localhost";
+            var kafkaPort = int.Parse(Environment.GetEnvironmentVariable("KAFKA_PORT") ?? "29092");
+
+            var kafkaUserSasl = Environment.GetEnvironmentVariable("KAFKA_SASL_USERNAME");
+            var kafkaUserPassword = Environment.GetEnvironmentVariable("KAFKA_SASL_PASSWORD");
+
+            var hasSasl = !(string.IsNullOrEmpty(kafkaUserSasl) || string.IsNullOrEmpty(kafkaUserPassword));
+            
             var consumerConfig = new ConsumerConfig
             {
                 EnableAutoCommit = true,
                 EnableAutoOffsetStore = false,
                 AllowAutoCreateTopics = true,
                 AutoOffsetReset = AutoOffsetReset.Latest,
-                ClientId = "unique.client",
+                ClientId = "simple.consumer",
                 SocketKeepaliveEnable = true,
-                ConnectionsMaxIdleMs = 180000
+                ConnectionsMaxIdleMs = 180000,
             };
 
             var consumerSettings = ConsumerSettings<Null, string>
                 .Create(actorSystem, null, null)
-                .WithBootstrapServers("localhost:29092")
+                .WithBootstrapServers($"{kafkaHost}:{kafkaPort}")
                 .WithStopTimeout(TimeSpan.Zero)
-                .WithGroupId("group1");
+                .WithGroupId("group2");
+            
+            var producerConfig = new ProducerConfig()
+            {
+            };
+
+            if (hasSasl)
+            {
+                actorSystem.Log.Info("Using SASL...");
+                consumerConfig.SaslMechanism = SaslMechanism.Plain;
+                consumerConfig.SaslUsername = kafkaUserSasl;
+                consumerConfig.SaslPassword = kafkaUserPassword;
+                consumerConfig.SecurityProtocol = SecurityProtocol.SaslSsl;
+
+                producerConfig.SaslMechanism = SaslMechanism.Plain;
+                producerConfig.SaslUsername = kafkaUserSasl;
+                producerConfig.SaslPassword = kafkaUserPassword;
+                producerConfig.SecurityProtocol = SecurityProtocol.SaslSsl;
+            }
             
             var producerSettings = ProducerSettings<Null, string>.Create(actorSystem,
                     null, null)
-                .WithBootstrapServers("localhost:29092");
+                .WithBootstrapServers($"{kafkaHost}:{kafkaPort}");
             
             // TODO: we should just be able to accept a `ConsumerConfig` property
             consumerConfig.ForEach(kv => consumerSettings = consumerSettings.WithProperty(kv.Key, kv.Value));
-
+            producerConfig.ForEach(kv => producerSettings = producerSettings.WithProperty(kv.Key, kv.Value));
+            
             var committerSettings = CommitterSettings.Create(actorSystem);
 
             var drainingControl = KafkaConsumer.CommittableSource(consumerSettings, Subscriptions.Topics("akka-input"))
@@ -72,9 +99,9 @@ namespace Akka.Streams.Kafka.Reproduction
                     .To(Sink.Ignore<int>()))
                 .Run(materializer);
 
-            Console.ReadLine();
-            await drainingControl.DrainAndShutdown();
-            await actorSystem.Terminate();
+            actorSystem.Log.Info("Stream started");
+            
+            await actorSystem.WhenTerminated;
         }
     }
 }

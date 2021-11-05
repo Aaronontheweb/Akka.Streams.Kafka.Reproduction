@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aaron.Akka.Streams.Dsl;
 using Akka.Actor;
+using Akka.Configuration;
 using Akka.Event;
 using Akka.Streams.Dsl;
 using Akka.Streams.Kafka.Dsl;
@@ -18,34 +19,62 @@ namespace Akka.Streams.Kafka.Reproduction.SubstreamConsumer
     {
          static async Task Main(string[] args)
         {
-            var configSetup = BootstrapSetup.Create().WithConfig(KafkaExtensions.DefaultSettings);
+            var configSetup = BootstrapSetup.Create().WithConfig(ConfigurationFactory.ParseString(@"akka.loglevel = DEBUG")
+                .WithFallback(KafkaExtensions.DefaultSettings));
             var actorSystem = ActorSystem.Create("KafkaSpec", configSetup);
             var materializer = actorSystem.Materializer();
 
+            var kafkaHost = Environment.GetEnvironmentVariable("KAFKA_HOST") ?? "localhost";
+            var kafkaPort = int.Parse(Environment.GetEnvironmentVariable("KAFKA_PORT") ?? "29092");
+
+            var kafkaUserSasl = Environment.GetEnvironmentVariable("KAFKA_SASL_USERNAME");
+            var kafkaUserPassword = Environment.GetEnvironmentVariable("KAFKA_SASL_PASSWORD");
+
+            var hasSasl = !(string.IsNullOrEmpty(kafkaUserSasl) || string.IsNullOrEmpty(kafkaUserPassword));
+            
             var consumerConfig = new ConsumerConfig
             {
                 EnableAutoCommit = true,
                 EnableAutoOffsetStore = false,
                 AllowAutoCreateTopics = true,
                 AutoOffsetReset = AutoOffsetReset.Latest,
-                ClientId = "unique.client",
+                ClientId = "substream.client",
                 SocketKeepaliveEnable = true,
-                ConnectionsMaxIdleMs = 180000
+                ConnectionsMaxIdleMs = 180000,
             };
 
             var consumerSettings = ConsumerSettings<Null, string>
                 .Create(actorSystem, null, null)
-                .WithBootstrapServers("localhost:29092")
+                .WithBootstrapServers($"{kafkaHost}:{kafkaPort}")
                 .WithStopTimeout(TimeSpan.Zero)
                 .WithGroupId("group1");
             
+            var producerConfig = new ProducerConfig()
+            {
+            };
+
+            if (hasSasl)
+            {
+                actorSystem.Log.Info("Using SASL...");
+                consumerConfig.SaslMechanism = SaslMechanism.Plain;
+                consumerConfig.SaslUsername = kafkaUserSasl;
+                consumerConfig.SaslPassword = kafkaUserPassword;
+                consumerConfig.SecurityProtocol = SecurityProtocol.SaslSsl;
+
+                producerConfig.SaslMechanism = SaslMechanism.Plain;
+                producerConfig.SaslUsername = kafkaUserSasl;
+                producerConfig.SaslPassword = kafkaUserPassword;
+                producerConfig.SecurityProtocol = SecurityProtocol.SaslSsl;
+            }
+            
             var producerSettings = ProducerSettings<Null, string>.Create(actorSystem,
                     null, null)
-                .WithBootstrapServers("localhost:29092");
+                .WithBootstrapServers($"{kafkaHost}:{kafkaPort}");
             
             // TODO: we should just be able to accept a `ConsumerConfig` property
             consumerConfig.ForEach(kv => consumerSettings = consumerSettings.WithProperty(kv.Key, kv.Value));
-
+            producerConfig.ForEach(kv => producerSettings = producerSettings.WithProperty(kv.Key, kv.Value));
+            
             var committerSettings = CommitterSettings.Create(actorSystem);
 
             var mappingFlow = (Flow<CommittableMessage<Null, string>, (string Topic, string Value, ICommittableOffset CommitableOffset), NotUsed>)Flow.Create<CommittableMessage<Null, string>>()
@@ -61,6 +90,7 @@ namespace Akka.Streams.Kafka.Reproduction.SubstreamConsumer
 
             var drainingControl = KafkaConsumer.CommittableSource(consumerSettings, Subscriptions.Topics("akka-input"))
                 .BackpressureAlert(LogLevel.WarningLevel, TimeSpan.FromMilliseconds(500))
+                .IdleTimeout(TimeSpan.FromSeconds(10))
                 .WithAttributes(Attributes.CreateName("CommitableSource"))
                 .Via(mappingFlow)
                 .Select(t => ProducerMessage.Single(new ProducerRecord<Null, string>($"{t.Topic}-done", t.Value),
@@ -76,10 +106,10 @@ namespace Akka.Streams.Kafka.Reproduction.SubstreamConsumer
                     .Log("MsgCount").AddAttributes(Attributes.CreateLogLevels(LogLevel.InfoLevel))
                     .To(Sink.Ignore<int>()))
                 .Run(materializer);
-
-            Console.ReadLine();
-            await drainingControl.DrainAndShutdown();
-            await actorSystem.Terminate();
+            
+            actorSystem.Log.Info("Stream started");
+            
+            await actorSystem.WhenTerminated;
         }
     }
 }
