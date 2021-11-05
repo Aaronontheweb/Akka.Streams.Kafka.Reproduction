@@ -45,6 +45,7 @@ namespace Akka.Streams.Kafka.Reproduction
                 .Create(actorSystem, null, null)
                 .WithBootstrapServers($"{kafkaHost}:{kafkaPort}")
                 .WithStopTimeout(TimeSpan.Zero)
+                .WithCommitTimeWarning(TimeSpan.FromMilliseconds(100))
                 .WithGroupId("group2");
             
             var producerConfig = new ProducerConfig()
@@ -75,6 +76,7 @@ namespace Akka.Streams.Kafka.Reproduction
             
             var committerSettings = CommitterSettings.Create(actorSystem);
 
+            /* Original commitable source
             var drainingControl = KafkaConsumer.CommittableSource(consumerSettings, Subscriptions.Topics("akka-input"))
                 .BackpressureAlert(LogLevel.WarningLevel, TimeSpan.FromMilliseconds(500))
                 .WithAttributes(Attributes.CreateName("CommitableSource"))
@@ -92,6 +94,28 @@ namespace Akka.Streams.Kafka.Reproduction
                 .Select(m => (ICommittable)m.PassThrough)
                 .AlsoToMaterialized(Committer.Sink(committerSettings), DrainingControl<NotUsed>.Create)
                 .To(Flow.Create<ICommittable>()
+                    .Async()
+                    .GroupedWithin(1000, TimeSpan.FromSeconds(1))
+                    .Select(c => c.Count())
+                    .Log("MsgCount").AddAttributes(Attributes.CreateLogLevels(LogLevel.InfoLevel))
+                    .To(Sink.Ignore<int>()))
+                .Run(materializer);
+                */
+            
+            var drainingControl = KafkaConsumer.PlainSource(consumerSettings, Subscriptions.Topics("akka-input"))
+                .BackpressureAlert(LogLevel.WarningLevel, TimeSpan.FromMilliseconds(500))
+                .WithAttributes(Attributes.CreateName("CommitableSource"))
+                .Select(c => (c.Topic, c.Message))
+                .SelectAsync(1, async t =>
+                {
+                    // simulate a request-response call that takes 10ms to complete here
+                    await Task.Delay(10);
+                    return t;
+                })
+                .Select(t => ProducerMessage.Single(new ProducerRecord<Null, string>($"{t.Topic}-done", t.Message)))
+                .BackpressureAlert(LogLevel.WarningLevel, TimeSpan.FromMilliseconds(500))
+                .Via(KafkaProducer.FlexiFlow<Null, string, NotUsed>(producerSettings)).WithAttributes(Attributes.CreateName("FlexiFlow"))
+                .To(Flow.Create<IResults<Null, string, NotUsed>>()
                     .Async()
                     .GroupedWithin(1000, TimeSpan.FromSeconds(1))
                     .Select(c => c.Count())
