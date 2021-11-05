@@ -25,6 +25,11 @@ namespace Akka.Streams.Kafka.Reproduction.SubstreamConsumer
             var kafkaHost = Environment.GetEnvironmentVariable("KAFKA_HOST") ?? "localhost";
             var kafkaPort = int.Parse(Environment.GetEnvironmentVariable("KAFKA_PORT") ?? "29092");
 
+            var kafkaUserSasl = Environment.GetEnvironmentVariable("KAFKA_SASL_USERNAME");
+            var kafkaUserPassword = Environment.GetEnvironmentVariable("KAFKA_SASL_PASSWORD");
+
+            var hasSasl = !(string.IsNullOrEmpty(kafkaUserSasl) || string.IsNullOrEmpty(kafkaUserPassword));
+            
             var consumerConfig = new ConsumerConfig
             {
                 EnableAutoCommit = true,
@@ -42,13 +47,25 @@ namespace Akka.Streams.Kafka.Reproduction.SubstreamConsumer
                 .WithStopTimeout(TimeSpan.Zero)
                 .WithGroupId("group1");
             
+            var producerConfig = new ProducerConfig()
+            {
+            };
+
+            if (hasSasl)
+            {
+                consumerConfig.SaslMechanism = producerConfig.SaslMechanism = SaslMechanism.Plain;
+                consumerConfig.SaslUsername = producerConfig.SaslUsername = kafkaUserSasl;
+                consumerConfig.SaslPassword = producerConfig.SaslPassword = kafkaUserPassword;
+            }
+            
             var producerSettings = ProducerSettings<Null, string>.Create(actorSystem,
                     null, null)
                 .WithBootstrapServers($"{kafkaHost}:{kafkaPort}");
             
             // TODO: we should just be able to accept a `ConsumerConfig` property
             consumerConfig.ForEach(kv => consumerSettings = consumerSettings.WithProperty(kv.Key, kv.Value));
-
+            producerConfig.ForEach(kv => producerSettings = producerSettings.WithProperty(kv.Key, kv.Value));
+            
             var committerSettings = CommitterSettings.Create(actorSystem);
 
             var mappingFlow = (Flow<CommittableMessage<Null, string>, (string Topic, string Value, ICommittableOffset CommitableOffset), NotUsed>)Flow.Create<CommittableMessage<Null, string>>()
